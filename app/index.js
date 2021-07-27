@@ -3,7 +3,7 @@ var fs = require('fs');
 var Promise = require("require-promise");
 var rimraf = require("rimraf");
 
-var poeditorBaseUrl = "https://poeditor.com/api/";
+var poeditorBaseUrl = "https://api.poeditor.com/v2";
 
 var poeditorApiToken;
 var poeditorProjectId;
@@ -19,6 +19,7 @@ var exportFiles;
 var exportFilters;
 var exportTags;
 var exportType;
+var importFuzzyTrigger;
 
 // https://poeditor.com/api_reference/
 
@@ -66,7 +67,7 @@ module.exports = {
 
         importUpdating = confObj.importUpdating;
         if (importUpdating == undefined) {
-            importUpdating = "terms_definitions";
+            importUpdating = "terms_translations";
         }
 
         importLanguage = confObj.importLanguage;
@@ -123,16 +124,18 @@ module.exports = {
         }
     },
 
+    /**
+     * Updates terms / translations - No more than one request every 30 seconds!
+     * @returns 
+     */
     importMessages: function() {
-        //console.log('importMessages');
 
         return new Promise(function(resolve, reject) {
 
             request.post({
-                    url: poeditorBaseUrl,
+                    url: `${poeditorBaseUrl}/projects/upload`,
                     formData: {
                         api_token: poeditorApiToken,
-                        action: "upload",
                         id: poeditorProjectId,
                         updating: importUpdating,
                         language: importLanguage,
@@ -140,7 +143,6 @@ module.exports = {
                         sync_terms: importSyncTerms,
                         file: fs.createReadStream(importFile),
                         fuzzy_trigger: importFuzzyTrigger,
-                        file: fs.createReadStream(importFile),
                         tags: importTags
                     }
                 },
@@ -157,12 +159,13 @@ module.exports = {
                         return;
                     }
 
-                    if (result && !result.details) {
+                    if (result && !result.terms) {
                         reject("missing result details");
                         return;
                     }
 
-                    console.log("uploaded terms. parsed:" + result.details.terms.parsed + ", added:" + result.details.terms.parsed + ", deleted:" + result.details.terms.deleted);
+                    console.log("uploaded terms. parsed:" + result.terms.parsed + ", added:" + result.terms.added + ", deleted:" + result.terms.deleted);
+                    console.log("uploaded translations. parsed:" + result.translations.parsed + ", added:" + result.translations.added + ", deleted:" + result.translations.deleted);
                     resolve();
                 });
         })
@@ -179,8 +182,11 @@ module.exports = {
         return new Promise(function(resolve, reject) {
 
             request.post({
-                    url: poeditorBaseUrl,
-                    form: {api_token: poeditorApiToken, action: "list_languages", id: poeditorProjectId}
+                    url: `${poeditorBaseUrl}/languages/list`,
+                    form: {
+                        api_token: poeditorApiToken,
+                        id: poeditorProjectId
+                    }
                 },
                 function(error, response, body) {
                     try {
@@ -189,11 +195,11 @@ module.exports = {
                         reject(e);
                     }
 
-                    if (!result.list || !result.list.length) {
+                    if (!result.languages || !result.languages.length) {
                         resolve([]);
                     }
 
-                    resolve(result.list.map(function(language) {
+                    resolve(result.languages.map(function(language) {
                         return language.code;
                     }));
                 });
@@ -201,7 +207,8 @@ module.exports = {
     },
 
     /**
-     * Download a file for a particular language
+     * Returns the link of the file (expires after 10 minutes).
+     * The settings inherited from the project will be the ones at the time of the download.
      */
     exportProjectLanguage: function(lang) {
         console.log("started downloading language: " + lang);
@@ -215,10 +222,9 @@ module.exports = {
         return new Promise(function(resolve, reject) {
 
             request.post({
-                    url: poeditorBaseUrl,
+                    url: `${poeditorBaseUrl}/projects/export`,
                     form: {
                         api_token: poeditorApiToken,
-                        action: "export",
                         id: poeditorProjectId,
                         language: lang,
                         type: exportType,
@@ -233,12 +239,12 @@ module.exports = {
                         reject(e);
                     }
 
-                    if (!result.item) {
+                    if (!result.url) {
                         reject("missing 'item' in " + body);
                     }
 
-                    var url = decodeURI(result.item);
-                    //console.log('language file at ' + url);
+                    var url = decodeURI(result.url);
+                    console.log('language file at ' + url);
                     request.get(url).pipe(fs.createWriteStream(target));
                     console.log("downloaded: " + target);
                     resolve(target);
@@ -247,7 +253,6 @@ module.exports = {
     },
 
     exportAllLanguages: function() {
-        //console.log("exportAllLanguages");
 
         rimraf.sync(exportDir);
         fs.mkdirSync(exportDir);
