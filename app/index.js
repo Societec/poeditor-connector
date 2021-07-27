@@ -153,6 +153,8 @@ module.exports = {
                         return;
                     }
 
+                    console.log('Code: ', response.statusCode, 'body: ', body);
+
                     try {
                         var responseData = parseResponse(error, response, body);
                     } catch (e) {
