@@ -1,9 +1,9 @@
-var request = require("request");
+var request = require('request');
 var fs = require('fs');
-var Promise = require("require-promise");
-var rimraf = require("rimraf");
+var Promise = require('require-promise');
+var rimraf = require('rimraf');
 
-var poeditorBaseUrl = "https://api.poeditor.com/v2";
+var poeditorBaseUrl = 'https://api.poeditor.com/v2';
 
 var poeditorApiToken;
 var poeditorProjectId;
@@ -32,7 +32,7 @@ function parseResponse(error, response, body) {
     try {
         return JSON.parse(body);
     } catch (e) {
-        throw "JSON parse exception error. body is: "+ body;
+        throw 'JSON parse exception error. body is: '+ body;
     }
 }
 
@@ -41,38 +41,38 @@ module.exports = {
     init: function(configFilePath) {
 
         if (configFilePath == undefined) {
-            throw Error("must initialize with a configFilePath");
+            throw Error('must initialize with a configFilePath');
         }
 
-        var confString = fs.readFileSync(configFilePath, "utf8");
+        var confString = fs.readFileSync(configFilePath, 'utf8');
         var confObj = JSON.parse(confString);
 
         poeditorApiToken = process.env.POEDITOR_API_TOKEN || confObj.apiToken;
         if (poeditorApiToken == undefined) {
-            console.error("poeditorApiToken");
-            throw Error(configFilePath + " must contain an api_token value entry 'apiToken'");
+            console.error('poeditorApiToken');
+            throw Error(configFilePath + ' must contain an api_token value entry \'apiToken\'');
         }
 
         poeditorProjectId = confObj.projectId;
         if (poeditorProjectId == undefined) {
-            console.error("poeditorProjectId");
-            throw Error(configFilePath + " must contain an id value entry 'projectId'");
+            console.error('poeditorProjectId');
+            throw Error(configFilePath + ' must contain an id value entry \'projectId\'');
         }
 
         importFile = confObj.importFile;
         if (importFile == undefined || !fs.existsSync(importFile)) {
-            console.error("importFile");
-            throw Error(configFilePath + " must contain an existing import file entry 'importFile'");
+            console.error('importFile');
+            throw Error(configFilePath + ' must contain an existing import file entry \'importFile\'');
         }
 
         importUpdating = confObj.importUpdating;
         if (importUpdating == undefined) {
-            importUpdating = "terms_translations";
+            importUpdating = 'terms_translations';
         }
 
         importLanguage = confObj.importLanguage;
         if (importLanguage == undefined) {
-            importLanguage = "en";
+            importLanguage = 'en';
         }
 
         importOverwrite = confObj.importOverwrite;
@@ -92,17 +92,17 @@ module.exports = {
 
         importTags = confObj.importTags;
         if (importTags == undefined) {
-            importTags = "all";
+            importTags = 'all';
         }
 
         exportDir = confObj.exportDir;
         if (exportDir == undefined) {
-            console.error("exportDir");
-            throw Error(configFilePath + " must contain an existing export directory 'exportDir'");
+            console.error('exportDir');
+            throw Error(configFilePath + ' must contain an existing export directory \'exportDir\'');
         }
 
         if (!fs.existsSync(exportDir)) {
-            console.log("creating " + exportDir);
+            console.log('creating ' + exportDir);
             fs.mkdirSync(exportDir);
         }
 
@@ -110,17 +110,17 @@ module.exports = {
 
         exportFilters = confObj.exportFilters;
         if (exportFilters == undefined) {
-            exportFilters = "all";
+            exportFilters = 'all';
         }
 
         exportTags = confObj.exportTags;
         if (exportTags == undefined) {
-            exportTags = "all";
+            exportTags = 'all';
         }
         
         exportType = confObj.exportType;
         if (exportType == undefined) {
-            exportType = "xtb";
+            exportType = 'xtb';
         }
     },
 
@@ -148,24 +148,28 @@ module.exports = {
                 },
                 function(error, response, body) {
                     if (error) {
+                        console.error(error);
                         reject(error);
                         return;
                     }
 
                     try {
-                        var result = parseResponse(error, response, body);
+                        var responseData = parseResponse(error, response, body);
                     } catch (e) {
                         reject(e);
                         return;
                     }
 
-                    if (result && !result.terms) {
-                        reject("missing result details");
+                    if (responseData && !responseData.result) {
+                        reject('Missing result details');
                         return;
                     }
 
-                    console.log("uploaded terms. parsed:" + result.terms.parsed + ", added:" + result.terms.added + ", deleted:" + result.terms.deleted);
-                    console.log("uploaded translations. parsed:" + result.translations.parsed + ", added:" + result.translations.added + ", deleted:" + result.translations.deleted);
+                    console.log('Uploaded terms:');
+                    console.table(responseData.result.terms);
+                    console.log('Uploaded translations:');
+                    console.table(responseData.result.translations);
+
                     resolve();
                 });
         })
@@ -177,8 +181,6 @@ module.exports = {
      * example: [ 'zh-CN', 'en', 'ja', 'ko', 'pt', 'ru', 'es', 'tr', 'vi' ]
      */
     listProjectLanguages: function() {
-        //console.log("listProjectLanguages");
-
         return new Promise(function(resolve, reject) {
 
             request.post({
@@ -190,7 +192,9 @@ module.exports = {
                 },
                 function(error, response, body) {
                     try {
-                        var result = parseResponse(error, response, body);
+                        var result = parseResponse(error, response, body).result;
+                        console.log('Languages data:');
+                        console.table(result.languages);
                     } catch (e) {
                         reject(e);
                     }
@@ -211,13 +215,13 @@ module.exports = {
      * The settings inherited from the project will be the ones at the time of the download.
      */
     exportProjectLanguage: function(lang) {
-        console.log("started downloading language: " + lang);
+        console.log('Started downloading ' + lang, 'language ...');
 
         var exportFile = exportFiles[lang];
         if (exportFile == undefined) {
-            throw Error("No exportFile defined for language " + lang);
+            throw Error('No exportFile defined for language ' + lang);
         }
-        var target = exportDir + "/" + exportFile;
+        var target = exportDir + '/' + exportFile;
 
         return new Promise(function(resolve, reject) {
 
@@ -234,19 +238,20 @@ module.exports = {
                 },
                 function(error, response, body) {
                     try {
-                        var result = parseResponse(error, response, body);
+                        var result = parseResponse(error, response, body).result;
                     } catch (e) {
                         reject(e);
                     }
 
                     if (!result.url) {
-                        reject("missing 'item' in " + body);
+                        reject('Missing \'item\' in ' + body);
                     }
 
                     var url = decodeURI(result.url);
-                    console.log('language file at ' + url);
+                    console.log('Language file at ' + url);
                     request.get(url).pipe(fs.createWriteStream(target));
-                    console.log("downloaded: " + target);
+                    console.log('Downloaded: ' + target);
+                    console.log('----------------------')
                     resolve(target);
                 });
         })
@@ -260,7 +265,7 @@ module.exports = {
         return module.exports.listProjectLanguages()
             .then(function(languages) {
                 if (!languages.length) {
-                    return Promise.reject("no languages list available");
+                    return Promise.reject('No languages list available!');
                 }
 
                 var languagePromises = languages.map(function(language) {
