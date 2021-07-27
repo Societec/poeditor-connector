@@ -19,5 +19,6 @@ connector.importMessages()
     })
     .catch(function(exception) {
         console.error(exception);
-        throw new Error('Error happened during Poedior connect task!');
+        console.error('Error happened during Poedior connect task!');
+        process.exit(1);
     });
