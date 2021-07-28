@@ -9,7 +9,7 @@ var args = argv.option({
     type: 'string',
     description: 'Defines the config file location',
     example: "poeditor-connector --config=config/poeditor.json"
-}).options({
+}).option({
     name: 'upload',
     short: 'u',
     type: 'string',
