@@ -62,14 +62,16 @@ Use from npm package.json:
 ```json
 {
   "scripts": {
-    "i18n": "npm run compile:aot && ng-xi18n --i18nFormat=xmb && npm run i18n:poeditor",
-    "i18n:poeditor": "poeditor --config=./config/poeditor.json" 
+    "i18n": "npm run compile:aot && ng-xi18n --i18nFormat=xmb && npm run i18n:poeditor:export",
+    "i18n:poeditor:upload": "poeditor --upload --config=./config/poeditor.json",
+    "i18n:poeditor:export": "poeditor --config=./config/poeditor.json",
   }
 }
 ```
 
 invoke from the shell
 ```sh
+npm run i18n:poeditor:upload
 npm run i18n
 ```
 

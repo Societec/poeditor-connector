@@ -9,16 +9,30 @@ var args = argv.option({
     type: 'string',
     description: 'Defines the config file location',
     example: "poeditor-connector --config=config/poeditor.json"
-}).run();
+}).options({
+    name: 'upload',
+    short: 'u',
+    type: 'string',
+    description: 'Upload translations with the config file',
+    example: "poeditor-connector --upload --config=config/poeditor.json"
+})
+.run();
 
 connector.init(args.options.config);
 
-connector.importMessages()
-    .then(function() {
-        return connector.exportAllLanguages()
-    })
+if (args.options.upload) {
+    connector.importMessages()
     .catch(function(exception) {
         console.error(exception);
-        console.error('Error happened during Poedior connect task!');
+        console.error('Error happened during Poedior upload task!');
         process.exit(1);
     });
+} else {
+    connector.exportAllLanguages()
+    .catch(function(exception) {
+        console.error(exception);
+        console.error('Error happened during Poedior export task!');
+        process.exit(1);
+    });
+}
+
